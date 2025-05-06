@@ -60,5 +60,16 @@ What Are Stick Tables?
   + Can track a large variety of items
 
 
+## lab env
 
+```bash
+
+yum -y module install container-tools
+yum install -y epel
+yum install -y figlet
+mkdir ~/testfiles
+for site in `seq 1 2`; do for server in `seq 1 3`; do figlet -f big SITE$site - WEB$server > ~/testfiles/site$site\_server$server.txt;done;done
+
+port=1;for site in `seq 1 2`; do for server in `seq 1 3`; do docker run -dt --name site$site\_server$server -p 800$(($port)):80 nginx;port=$(($port+1));done;done
+```
 
