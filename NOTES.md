@@ -71,5 +71,46 @@ mkdir ~/testfiles
 for site in `seq 1 2`; do for server in `seq 1 3`; do figlet -f big SITE$site - WEB$server > ~/testfiles/site$site\_server$server.txt;done;done
 
 port=1;for site in `seq 1 2`; do for server in `seq 1 3`; do docker run -dt --name site$site\_server$server -p 800$(($port)):80 nginx;port=$(($port+1));done;done
+for site in `seq 1 2`; do for server in `seq 1 3`; do docker cp ~/testfiles/site$site\_server$server.txt site$site\_server$server:/usr/share/nginx/html/test.txt;done;done
+port=1;for site in `seq 1 2`; do for server in `seq 1 3`; do curl http://127.0.0.1:800$port/test.txt nginx;port=$(($port+1));done;done
 ```
 
+> yum install haproxy
+
+> setsebool -P haproxy_connect_any 1
+
+> vim /etc/haproxy/haproxy.cfg
+
+
+```
+# Site-Frontends
+frontend site1
+    bind *:8000
+    default_backend site1
+
+frontend site2
+    bind *:8100
+    default_backend site2
+
+# Site 1 backend
+    backend site1
+    balance roundrobin
+    server site1-web1 127.0.0.1:8001 check
+    server site1-web2 127.0.0.1:8002 check
+    server site1-web3 127.0.0.1:8003 check
+
+# Site 2 backend
+    backend site2
+    balance roundrobin
+    server site2-web1 127.0.0.1:8004 check
+    server site2-web2 127.0.0.1:8005 check
+    server site2-web3 127.0.0.1:8006 check
+
+# Stats Page
+    listen stats
+        bind *:8050
+        stats enable
+        stats uri /
+        stats hide-version
+
+```
