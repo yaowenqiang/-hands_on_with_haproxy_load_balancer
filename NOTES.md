@@ -93,24 +93,42 @@ frontend site2
     default_backend site2
 
 # Site 1 backend
-    backend site1
+backend site1
     balance roundrobin
     server site1-web1 127.0.0.1:8001 check
     server site1-web2 127.0.0.1:8002 check
     server site1-web3 127.0.0.1:8003 check
 
 # Site 2 backend
-    backend site2
+backend site2
     balance roundrobin
     server site2-web1 127.0.0.1:8004 check
     server site2-web2 127.0.0.1:8005 check
     server site2-web3 127.0.0.1:8006 check
 
 # Stats Page
-    listen stats
-        bind *:8050
-        stats enable
-        stats uri /
-        stats hide-version
+listen stats
+    bind *:8050
+    stats enable
+    stats uri /
+    stats hide-version
+
+```
+
+```
+systemctl enable --now haproxy
+curl localhost:8000/test.txt
+curl localhost:8100/test.txt
+
+# stop all containers
+docker stop $(docker ps -q)
+
+# start all containers
+docker start $(docker ps -q -a)
+
+podman start site{1..2}_server{1..3}
+
+docker start site{1..2}_server{1..3}
+
 
 ```
