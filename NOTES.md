@@ -1,4 +1,4 @@
-Load Balancing Examples:
+## Load Balancing Examples:
 
 + HAProxy(tcp and http)
 + nginx(tcp and http)
@@ -7,7 +7,7 @@ Load Balancing Examples:
 + Cloud-based load balancer
 
 
-Load Balancing Algorithms:
+## Load Balancing Algorithms:
 
 + round  robin
 + static-rr(round robin)
@@ -38,7 +38,7 @@ stats interface
   + Non-interactive mode
   + interactive mode
 
-stats Webpage
+## stats Webpage
 
 + Displays HAProxy statics
 + Organized per-frontend/backend/server
@@ -132,3 +132,39 @@ docker start site{1..2}_server{1..3}
 
 
 ```
+
+## http rewrite
+
+HTTP Rewrites
+
++ Change the HTTP request method
++ Manipulate HTTP headers
++ Set the URL path
++ Set the query string
++ Set the URI
+
+> curl -s http://127.0.0.1:8000/test.txt
+> curl -s http://127.0.0.1:8100/test.txt
+
+```bash
+
+for site in `seq 1 2`; do for server in `seq 1 3`; do docker exec site$site\_server$server mkdir /usr/share/nginx/html/textfiles;done;done
+
+for site in `seq 1 2`; do for server in `seq 1 3`; do docker exec site$site\_server$server mv -v /usr/share/nginx/html/test.txt /usr/share/nginx/html/textfiles;done;done
+
+
+docker exec -it site1_server1 /bin/bash
+
+http http://127.0.0.1:8000/textfiles/test.txt
+
+```
+
+```
+frontend site1
+    bind *:8000
+    default_backend site1
+    acl p_ext_txt path_end -i .txt
+    acl p_folder_textfiles path_beg -i /textfiles/
+    http-request set-path /textfiles/%[path] if !p_folder_textfiles p_ext_txt
+```
+
