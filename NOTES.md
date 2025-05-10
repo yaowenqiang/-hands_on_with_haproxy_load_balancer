@@ -168,3 +168,60 @@ frontend site1
     http-request set-path /textfiles/%[path] if !p_folder_textfiles p_ext_txt
 ```
 
+## Load Balancing HTTPS 
+
+### SSL/TLS Support
+
+Types:
+
++ SSL paththrough
++ SSL termination
+  + Single point of management
+  + Offload SSL processing
+
+
+```
+front-end http-in
+    bind *:80
+    mode http
+    acl site-1 hdr(host) -i www.site1.com
+    acl site-2 hdr(host) -i www.site2.com
+    use_backend site1 if site-1
+    use_backend site2 if site-2
+
+
+# change host dns
+
+> 127.0.0.1 www.site1.com
+> 127.0.0.1 www.site2.com
+
+curl http://www.site1.com/textfiles/test.txt
+curl http://www.site2.com/textfiles/test.txt
+```
+
+```
+cd /etc/haproxy/certs/
+
+openssl genrsa -out site1.key 2048
+openssl req -new -x509 -key site1.key -out site1.crt -days 365 -subj "/CN=site1.com"
+
+cat site1.key site1.crt > site1.pem
+
+openssl genrsa -out site2.key 2048
+openssl req -new -x509 -key site2.key -out site2.crt -days 365 -subj "/CN=site2.com"
+
+cat site2.key site2.crt > site2.pem
+
+front-end http-https-in
+    bind *:80
+    bind *:443 ssl crt /etc/haproxy/certs/site1.pem  crt /etc/haproxy/certs/site2.pem force-tlsv12
+    mode http
+    http-request redirect scheme https unless { ssl_fc }
+    acl site-1 hdr(host) -i www.site1.com
+    acl site-2 hdr(host) -i www.site2.com
+    use_backend site1 if site-1
+    use_backend site2 if site-2
+
+curl -k https://www.site1.com/textfiles/test.txt
+curl -L -k http://www.site1.com/textfiles/test.txt
+```
