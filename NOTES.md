@@ -311,6 +311,39 @@ wget --no-check-certificate -O -  http://www.site2.com/textfiles/test.txt
 
 ```
 
+## securing ssh
 
+
+```
+# Frontend for ssh
+frontend ssh-in
+    bind *:2222
+    mode tcp
+    default_backend sshd1
+    options tcplog
+    timeout client 1m
+    tcp-request content track-sc0 src table ssh_per_ip_connections 
+    tcp-request content reject if { sc_conn_cur(0) gt 2} || {sc_conn_rate(0)  gt 10 }
+    default backend sshd1
+# ssh backend
+backend sshd1
+    mode tcp
+    server sshd1-server1 127.0.0.1:2223 check
+
+# backend for ssh_per_ip_connections
+
+backend ssh_per_ip_connections
+    stick-table type ip size 1m expire 1m store conn_rate(1m)
+
+scp -o StrickHostKeyChecking=no -o UserKnownHostFile=/dev/null -P 2222 user@host:/path
+
+```
+
+```bash
+for i in `seq 1 1000`; do bash -c 'scp -o StrickHostKeyChecking=no -o UserKnownHostFile=/dev/null -P 2222 user@host:/path &'; done;
+
+
+
+```
 
 
