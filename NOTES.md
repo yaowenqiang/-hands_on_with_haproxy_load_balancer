@@ -225,3 +225,92 @@ front-end http-https-in
 curl -k https://www.site1.com/textfiles/test.txt
 curl -L -k http://www.site1.com/textfiles/test.txt
 ```
+
+## Configuring DDoS Attack protection 
+
+Dealing with Attachs
+
+Common Types:
+
++ HTTP Flood
+  + Overwhelm site with with request volumn
++ Slowloris
+  + Slow requests - tie up connections
++ Static characteristics
+  + ACLs
+  + Blocking by IP address
+
+| SOFTWARE |
+| ------------- |
+| lAYER7 APPLICATION  UPPER LAYER DATA HTTP,SSH, NFS, RDP, NTP, SMTP |
+| lAYER6 PRESENTATION UPPERLAYER DATA SSL, TLS, ASCII, EBCDIC, ENCRYPT|
+| LAYER 5 SESSION  UPPERLAYER DATA NETBIOS, NCP, PPTP, RPC, SCP |
+| LAYER 4 TRANSPORT SEGMENT TCP, UDP, ATP, SCTP, SPX |
+| LAYER 3 NETWORK PACKET IPOV4, IPV6, ICMP, IGMP, IPSEC, IPX |
+| HARDWARE |
+| LAYER 2 DATALINK FRAME ARP, ETHERNET, MPLS, MAC, PPP |
+| LAYER 1 PHYSICAL BITS, CABLING,DSL, T1, GSM, MODEM |
+
+
+### What is a Named ACL
+
++ Assign a condition to name in ACL, (acl is_iamge path -i -m beg /images/)
++ Use with if and unless statements to perform 1 or more actions
+
+### What is an In-Line ACL
+
++ Combines the condition check with if and unless statements to perform a single action
++ use_backend be_site3 if {path -i -m beg /images/}
++ More efficient for single-use cases
+
+### What Are Haproxy Maps
+
++ Plain text
++ Stores key-value pairs
++ Used as a lookup table
++ Can be edited directly, via API, or using http-request set-map
+
+### What are Stick Tables
+
++ Key-value store
++ Key is what you are tracking(example: client IP)
++ Value counts what you are tracking(example, client IP requests in  the past 10 seconds)
++ Can track a large variety of items
++ Relies heavily on HAProxy ACLs
++ Only 1 stick table per frontend of backend
+
+
+> ab -n 100000 -c 100 http://www.site1.com > ~/ab.site1.log > /dev/null 2>&1 &
+> ab -n 100000 -c 100 http://www.site2.com > ~/ab.site2.log > /dev/null 2>&1 &
+
+
+```
+touch /etc/haproxy/blocked.acl
+
+frontend http-https-in
+    bind *:80
+    bind *:443 ssl crt /etc/haproxy/certs/site1.pem  crt /etc/haproxy/certs/site2.pem force-tlsv12
+    mode http
+    http-request redirect scheme https unless { ssl_fc }
+    http-request track-sc0 src table per_ip_rates
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+    http-request deny deny_status 500 if { req.hdr(user-agent) -i -m sub curl }
+    http-request deny deny_status 503 if { src -f /etc/haproxy/blocked.acl }
+
+    acl site-1 hdr(host) -i www.site1.com
+    acl site-2 hdr(host) -i www.site2.com
+    use_backend site1 if site-1
+    use_backend site2 if site-2
+
+# backend for per_ip_rates
+backend per_ip_rates
+    stick-table type ip size 1m expire 10m store http_req_rate(10s)
+
+wget --no-check-certificate -O -  http://www.site1.com/textfiles/test.txt
+wget --no-check-certificate -O -  http://www.site2.com/textfiles/test.txt
+
+```
+
+
+
+
